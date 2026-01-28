@@ -60,6 +60,21 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        voice: {
+          purple: "var(--voice-purple)",
+        },
+        success: {
+          green: "var(--success-green)",
+        },
+        warning: {
+          yellow: "var(--warning-yellow)",
+        },
+        danger: {
+          red: "var(--danger-red)",
+        },
+        info: {
+          blue: "var(--info-blue)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
