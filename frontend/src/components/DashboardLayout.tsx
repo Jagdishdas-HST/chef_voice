@@ -46,27 +46,34 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
+      <header className="glass sticky top-0 z-50 border-b border-white/20 shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden btn-scale hover:bg-white/50"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X /> : <Menu />}
             </Button>
-            <div className="flex items-center gap-2">
-              <Mic className="h-6 w-6 text-voice-purple" />
-              <span className="text-xl font-bold">ChefVoice</span>
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
+              <div className="w-10 h-10 bg-gradient-to-br from-voice-purple to-info-blue rounded-xl flex items-center justify-center float-animation">
+                <Mic className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold gradient-text">ChefVoice</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 hidden md:inline">Restaurant Name</span>
-            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+            <span className="text-sm text-gray-600 hidden md:inline px-4 py-2 glass rounded-lg">Restaurant Name</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate("/")}
+              className="btn-scale glass hover:bg-white/80 border-white/30"
+            >
               Logout
             </Button>
           </div>
@@ -75,18 +82,20 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:block w-64 bg-white border-r min-h-[calc(100vh-73px)] sticky top-[73px]">
+        <aside className="hidden md:block w-64 glass border-r border-white/20 min-h-[calc(100vh-73px)] sticky top-[73px]">
           <nav className="p-4 space-y-1">
             {navItems.map((item) => (
               <Button
                 key={item.path}
                 variant={isActive(item.path) ? "secondary" : "ghost"}
-                className={`w-full justify-start ${
-                  isActive(item.path) ? "bg-voice-purple/10 text-voice-purple" : ""
+                className={`w-full justify-start transition-all duration-300 btn-scale ${
+                  isActive(item.path) 
+                    ? "bg-gradient-to-r from-voice-purple/20 to-info-blue/20 text-voice-purple border-l-4 border-voice-purple shadow-lg" 
+                    : "hover:bg-white/50 hover:translate-x-1"
                 }`}
                 onClick={() => navigate(item.path)}
               >
-                <item.icon className="h-4 w-4 mr-2" />
+                <item.icon className="h-4 w-4 mr-3" />
                 {item.label}
               </Button>
             ))}
@@ -95,22 +104,30 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
-            <aside className="w-64 bg-white h-full" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <aside 
+              className="w-64 glass-dark h-full slide-in" 
+              onClick={(e) => e.stopPropagation()}
+            >
               <nav className="p-4 space-y-1">
                 {navItems.map((item) => (
                   <Button
                     key={item.path}
                     variant={isActive(item.path) ? "secondary" : "ghost"}
-                    className={`w-full justify-start ${
-                      isActive(item.path) ? "bg-voice-purple/10 text-voice-purple" : ""
+                    className={`w-full justify-start transition-all duration-300 ${
+                      isActive(item.path) 
+                        ? "bg-gradient-to-r from-voice-purple/20 to-info-blue/20 text-voice-purple border-l-4 border-voice-purple" 
+                        : "text-white hover:bg-white/10"
                     }`}
                     onClick={() => {
                       navigate(item.path);
                       setIsMobileMenuOpen(false);
                     }}
                   >
-                    <item.icon className="h-4 w-4 mr-2" />
+                    <item.icon className="h-4 w-4 mr-3" />
                     {item.label}
                   </Button>
                 ))}
