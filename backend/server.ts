@@ -1,13 +1,37 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { pool } from "./db";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+const PgSession = connectPgSimple(session);
 
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session configuration
+app.use(
+  session({
+    store: new PgSession({
+      pool,
+      tableName: "sessions",
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || "DUMMY_SESSION_SECRET_CHANGE_IN_PRODUCTION",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    },
+  })
+);
 
 // Logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -34,7 +58,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Add health check endpoint before registerRoutes
+// Health check endpoint
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({
     status: "ok",
@@ -59,8 +83,7 @@ async function startServer() {
       throw err;
     });
 
-    // CRITICAL: Setup Vite/static serving AFTER API routes
-    // This ensures the catch-all route doesn't interfere with API endpoints
+    // Setup Vite/static serving AFTER API routes
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
