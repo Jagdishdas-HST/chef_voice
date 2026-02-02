@@ -1,10 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Truck, Camera, Mic } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Truck, Info } from "lucide-react";
 import AddDeliveryDialog from "@/components/AddDeliveryDialog";
 import { useDeliveries } from "@/hooks/useDeliveries";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Delivery = () => {
   const { data: deliveries = [], refetch } = useDeliveries();
@@ -26,18 +26,16 @@ const Delivery = () => {
             <h1 className="text-3xl font-bold mb-2">Delivery Logging</h1>
             <p className="text-gray-600">Record deliveries with voice or OCR (FSAI SC1)</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled>
-              <Camera className="h-4 w-4 mr-2" />
-              Scan Invoice
-            </Button>
-            <Button variant="outline" disabled>
-              <Mic className="h-4 w-4 mr-2" />
-              Voice Log
-            </Button>
-            <AddDeliveryDialog onDeliveryAdded={refetch} />
-          </div>
+          <AddDeliveryDialog onDeliveryAdded={refetch} />
         </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>OCR:</strong> Click "Scan Invoice" to upload an invoice image. The system will extract supplier, products, and batch numbers.<br/>
+            <strong>Voice:</strong> Click "Voice Log" and say: "Supplier is [name], received by [staff], product [name] [quantity] [temperature] batch [number]"
+          </AlertDescription>
+        </Alert>
 
         {deliveries.length === 0 ? (
           <Card>

@@ -1,7 +1,8 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
-  Home, 
+  LayoutDashboard, 
   Thermometer, 
   Truck, 
   Flame, 
@@ -9,138 +10,136 @@ import {
   ClipboardCheck, 
   GraduationCap, 
   HeartPulse, 
-  Gauge,
-  FileText,
-  Shield,
+  Gauge, 
+  FileText, 
+  Shield, 
   Settings,
-  Menu,
-  X,
-  Mic
+  LogOut,
+  Mic,
+  MicOff
 } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useVoiceNavigation } from "@/hooks/useVoiceNavigation";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { isListening, transcript, startListening, stopListening, isSupported } = useVoiceNavigation();
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest("/api/auth/logout", { method: "POST" });
+      toast({ title: "Logged out successfully" });
+      navigate("/login");
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: String(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleVoiceNavigation = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
 
   const navItems = [
-    { icon: Home, label: "Dashboard", path: "/dashboard" },
-    { icon: Thermometer, label: "Refrigeration", path: "/refrigeration" },
-    { icon: Truck, label: "Delivery", path: "/delivery" },
-    { icon: Flame, label: "Cook/Cool/Reheat", path: "/cook-cool-reheat" },
-    { icon: Clock, label: "Hot Holding", path: "/hot-holding" },
-    { icon: ClipboardCheck, label: "Hygiene Inspection", path: "/hygiene-inspection" },
-    { icon: GraduationCap, label: "Training", path: "/training" },
-    { icon: HeartPulse, label: "Fitness to Work", path: "/fitness-to-work" },
-    { icon: Gauge, label: "Thermometer Check", path: "/thermometer-check" },
-    { icon: FileText, label: "Reports", path: "/reports" },
-    { icon: Shield, label: "Compliance", path: "/compliance" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/refrigeration", icon: Thermometer, label: "Refrigeration" },
+    { path: "/delivery", icon: Truck, label: "Delivery" },
+    { path: "/cook-cool-reheat", icon: Flame, label: "Cook/Cool/Reheat" },
+    { path: "/hot-holding", icon: Clock, label: "Hot Holding" },
+    { path: "/hygiene-inspection", icon: ClipboardCheck, label: "Hygiene" },
+    { path: "/training", icon: GraduationCap, label: "Training" },
+    { path: "/fitness-to-work", icon: HeartPulse, label: "Fitness" },
+    { path: "/thermometer-check", icon: Gauge, label: "Thermometer" },
+    { path: "/reports", icon: FileText, label: "Reports" },
+    { path: "/compliance", icon: Shield, label: "Compliance" },
+    { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
-      {/* Header */}
-      <header className="glass sticky top-0 z-50 border-b border-white/20 shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden btn-scale hover:bg-white/50"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X /> : <Menu />}
-            </Button>
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
-              <div className="w-10 h-10 bg-gradient-to-br from-voice-purple to-info-blue rounded-xl flex items-center justify-center float-animation">
-                <Mic className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold gradient-text">ChefVoice</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 hidden md:inline px-4 py-2 glass rounded-lg">Restaurant Name</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate("/")}
-              className="btn-scale glass hover:bg-white/80 border-white/30"
-            >
-              Logout
-            </Button>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 overflow-y-auto">
+        <div className="p-6">
+          <h1 className="text-2xl font-bold text-voice-purple">HACCP Manager</h1>
+          <p className="text-sm text-gray-600 mt-1">Food Safety Compliance</p>
         </div>
-      </header>
 
-      <div className="flex">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:block w-64 glass border-r border-white/20 min-h-[calc(100vh-73px)] sticky top-[73px]">
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => (
-              <Button
-                key={item.path}
-                variant={isActive(item.path) ? "secondary" : "ghost"}
-                className={`w-full justify-start transition-all duration-300 btn-scale ${
-                  isActive(item.path) 
-                    ? "bg-gradient-to-r from-voice-purple/20 to-info-blue/20 text-voice-purple border-l-4 border-voice-purple shadow-lg" 
-                    : "hover:bg-white/50 hover:translate-x-1"
-                }`}
-                onClick={() => navigate(item.path)}
-              >
-                <item.icon className="h-4 w-4 mr-3" />
-                {item.label}
-              </Button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            <aside 
-              className="w-64 glass-dark h-full slide-in" 
-              onClick={(e) => e.stopPropagation()}
+        {isSupported && (
+          <div className="px-4 mb-4">
+            <Button
+              variant={isListening ? "destructive" : "outline"}
+              className="w-full"
+              onClick={toggleVoiceNavigation}
             >
-              <nav className="p-4 space-y-1">
-                {navItems.map((item) => (
-                  <Button
-                    key={item.path}
-                    variant={isActive(item.path) ? "secondary" : "ghost"}
-                    className={`w-full justify-start transition-all duration-300 ${
-                      isActive(item.path) 
-                        ? "bg-gradient-to-r from-voice-purple/20 to-info-blue/20 text-voice-purple border-l-4 border-voice-purple" 
-                        : "text-white hover:bg-white/10"
-                    }`}
-                    onClick={() => {
-                      navigate(item.path);
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    <item.icon className="h-4 w-4 mr-3" />
-                    {item.label}
-                  </Button>
-                ))}
-              </nav>
-            </aside>
+              {isListening ? (
+                <>
+                  <MicOff className="h-4 w-4 mr-2" />
+                  Stop Listening
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4 mr-2" />
+                  Voice Navigation
+                </>
+              )}
+            </Button>
+            {transcript && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                {transcript}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8">
-          {children}
-        </main>
-      </div>
+        <nav className="px-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-voice-purple text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 mt-auto">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+      </aside>
+
+      <main className="ml-64 p-8">
+        {children}
+      </main>
     </div>
   );
 };

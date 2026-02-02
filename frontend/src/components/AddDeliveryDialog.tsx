@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Camera, Mic, Upload } from "lucide-react";
 import { useCreateDelivery } from "@/hooks/useDeliveries";
+import { processInvoice } from "@/services/ocr.service";
+import { voiceService, parseDeliveryVoiceInput } from "@/services/voice.service";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   name: string;
@@ -24,8 +27,13 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
   const [products, setProducts] = useState<Product[]>([
     { name: "", quantity: "", temperature: "", category: "Chilled", batchNumber: "", quality: "Good" }
   ]);
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const createDelivery = useCreateDelivery();
+  const { toast } = useToast();
 
   const addProduct = () => {
     setProducts([...products, { name: "", quantity: "", temperature: "", category: "Chilled", batchNumber: "", quality: "Good" }]);
@@ -39,6 +47,128 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
     const updated = [...products];
     updated[index] = { ...updated[index], [field]: value };
     setProducts(updated);
+  };
+
+  const handleOCRScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingOCR(true);
+    toast({
+      title: "Processing invoice...",
+      description: "Extracting text from image",
+    });
+
+    try {
+      const parsed = await processInvoice(file);
+      
+      if (parsed.supplier) {
+        setSupplier(parsed.supplier);
+      }
+      
+      if (parsed.deliveryDate) {
+        setDeliveryDate(parsed.deliveryDate);
+      }
+
+      if (parsed.products.length > 0) {
+        setProducts(parsed.products.map(p => ({
+          name: p.name,
+          quantity: p.quantity || "",
+          temperature: p.temperature || "",
+          category: "Chilled" as const,
+          batchNumber: p.batchNumber || "",
+          quality: "Good" as const,
+        })));
+      }
+
+      toast({
+        title: "Invoice scanned successfully",
+        description: `Found ${parsed.products.length} products`,
+      });
+    } catch (error) {
+      console.error('[OCR] Error:', error);
+      toast({
+        title: "OCR failed",
+        description: String(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingOCR(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleVoiceInput = () => {
+    if (!voiceService.isSupported()) {
+      toast({
+        title: "Voice not supported",
+        description: "Please use Chrome, Edge, or Safari",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListeningVoice) {
+      voiceService.stopListening();
+      setIsListeningVoice(false);
+      return;
+    }
+
+    voiceService.startListening(
+      (result) => {
+        console.log('[Voice] Result:', result);
+        setVoiceTranscript(result.transcript);
+
+        if (result.isFinal) {
+          const parsed = parseDeliveryVoiceInput(result.transcript);
+          
+          if (parsed.supplier) {
+            setSupplier(parsed.supplier);
+          }
+          
+          if (parsed.staffMember) {
+            setStaffMember(parsed.staffMember);
+          }
+
+          if (parsed.products && parsed.products.length > 0) {
+            setProducts(parsed.products.map(p => ({
+              name: p.name,
+              quantity: p.quantity || "",
+              temperature: p.temperature || "",
+              category: p.category || "Chilled",
+              batchNumber: p.batchNumber || "",
+              quality: "Good" as const,
+            })));
+          }
+
+          toast({
+            title: "Voice input processed",
+            description: "Delivery data extracted from voice",
+          });
+
+          voiceService.stopListening();
+          setIsListeningVoice(false);
+          setVoiceTranscript("");
+        }
+      },
+      (error) => {
+        console.error('[Voice] Error:', error);
+        toast({
+          title: "Voice recognition error",
+          description: error,
+          variant: "destructive",
+        });
+        setIsListeningVoice(false);
+      }
+    );
+
+    setIsListeningVoice(true);
+    toast({
+      title: "Listening...",
+      description: "Say: 'Supplier is [name], received by [staff], product [name] [quantity] [temperature] batch [number]'",
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +201,42 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
           <DialogTitle>Log Delivery</DialogTitle>
           <DialogDescription>Record delivery details with products and temperatures</DialogDescription>
         </DialogHeader>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleOCRScan}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isProcessingOCR}
+            className="flex-1"
+          >
+            <Camera className="h-4 w-4 mr-2" />
+            {isProcessingOCR ? "Processing..." : "Scan Invoice"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleVoiceInput}
+            className={`flex-1 ${isListeningVoice ? 'bg-red-50 border-red-300' : ''}`}
+          >
+            <Mic className={`h-4 w-4 mr-2 ${isListeningVoice ? 'text-red-500' : ''}`} />
+            {isListeningVoice ? "Listening..." : "Voice Log"}
+          </Button>
+        </div>
+
+        {voiceTranscript && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm mb-4">
+            <strong>Transcript:</strong> {voiceTranscript}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
