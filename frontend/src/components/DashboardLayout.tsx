@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useVoiceNavigation } from "@/hooks/useVoiceNavigation";
+import { useVoiceControl } from "@/hooks/useVoiceControl";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -30,7 +30,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isListening, transcript, startListening, stopListening, isSupported } = useVoiceNavigation();
+  const { isListening, transcript, startListening, stopListening, isSupported } = useVoiceControl();
 
   const handleLogout = async () => {
     try {
@@ -46,7 +46,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }
   };
 
-  const toggleVoiceNavigation = () => {
+  const toggleVoiceControl = () => {
     if (isListening) {
       stopListening();
     } else {
@@ -82,7 +82,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <Button
               variant={isListening ? "destructive" : "outline"}
               className="w-full"
-              onClick={toggleVoiceNavigation}
+              onClick={toggleVoiceControl}
             >
               {isListening ? (
                 <>
@@ -92,13 +92,22 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               ) : (
                 <>
                   <Mic className="h-4 w-4 mr-2" />
-                  Voice Navigation
+                  Voice Control
                 </>
               )}
             </Button>
             {transcript && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                 {transcript}
+              </div>
+            )}
+            {isListening && (
+              <div className="mt-2 text-xs text-gray-600 space-y-1">
+                <p><strong>Try saying:</strong></p>
+                <p>• "Go to [page name]"</p>
+                <p>• "Add new delivery"</p>
+                <p>• "Log temperature"</p>
+                <p>• "Open form"</p>
               </div>
             )}
           </div>

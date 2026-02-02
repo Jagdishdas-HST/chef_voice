@@ -66,12 +66,21 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Hash password
   async hashPassword(password: string): Promise<string> {
+    console.log("[storage] Hashing password");
     return bcrypt.hash(password, SALT_ROUNDS);
   }
 
   // Verify password
   async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
+    console.log("[storage] Verifying password");
+    try {
+      const isValid = await bcrypt.compare(plainPassword, hashedPassword);
+      console.log("[storage] Password verification result:", isValid);
+      return isValid;
+    } catch (error) {
+      console.error("[storage] Password verification error:", error);
+      return false;
+    }
   }
 
   // Get all users (without passwords)
@@ -112,7 +121,9 @@ export class DatabaseStorage implements IStorage {
 
   // Get user by email (with password for authentication)
   async getUserByEmail(email: string): Promise<User | undefined> {
+    console.log("[storage] Getting user by email:", email);
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    console.log("[storage] User found:", user ? "yes" : "no");
     return user;
   }
 
@@ -127,6 +138,7 @@ export class DatabaseStorage implements IStorage {
     console.log("[storage] Creating user:", userData.email);
     
     const hashedPassword = await this.hashPassword(userData.password);
+    console.log("[storage] Password hashed successfully");
     
     const [createdUser] = await db.insert(users).values({
       ...userData,
