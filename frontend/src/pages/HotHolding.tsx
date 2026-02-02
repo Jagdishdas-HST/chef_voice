@@ -1,33 +1,12 @@
-import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import AddHotHoldingDialog from "@/components/AddHotHoldingDialog";
-
-interface HotHoldingRecord {
-  id: string;
-  foodItem: string;
-  timeIntoHotHold: string;
-  coreTemperature: number;
-  checkedBy: string;
-  comments?: string;
-  createdAt: string;
-}
+import { useHotHoldingRecords } from "@/hooks/useHotHolding";
 
 const HotHolding = () => {
-  const [records, setRecords] = useState<HotHoldingRecord[]>([]);
-
-  const loadData = () => {
-    const stored = JSON.parse(localStorage.getItem("hotHoldingRecords") || "[]");
-    setRecords(stored.sort((a: HotHoldingRecord, b: HotHoldingRecord) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: records = [], refetch } = useHotHoldingRecords();
 
   return (
     <DashboardLayout>
@@ -37,7 +16,7 @@ const HotHolding = () => {
             <h1 className="text-3xl font-bold mb-2">Hot Holding</h1>
             <p className="text-gray-600">Monitor hot holding temperatures (FSAI SC4)</p>
           </div>
-          <AddHotHoldingDialog onRecordAdded={loadData} />
+          <AddHotHoldingDialog onRecordAdded={refetch} />
         </div>
 
         <Card>
@@ -54,7 +33,7 @@ const HotHolding = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {records.map((record) => (
+                {records.map((record: any) => (
                   <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div className="flex-1">
                       <div className="font-medium">{record.foodItem}</div>
@@ -70,8 +49,8 @@ const HotHolding = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-lg">{record.coreTemperature}°C</span>
-                      <Badge className={record.coreTemperature >= 63 ? "bg-success-green" : "bg-danger-red"}>
-                        {record.coreTemperature >= 63 ? "SAFE" : "UNSAFE"}
+                      <Badge className={parseFloat(record.coreTemperature) >= 63 ? "bg-success-green" : "bg-danger-red"}>
+                        {parseFloat(record.coreTemperature) >= 63 ? "SAFE" : "UNSAFE"}
                       </Badge>
                     </div>
                   </div>

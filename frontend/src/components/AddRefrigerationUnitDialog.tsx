@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateRefrigerationUnit } from "@/hooks/useRefrigeration";
 
 interface AddRefrigerationUnitDialogProps {
   onUnitAdded: () => void;
@@ -19,39 +19,18 @@ const AddRefrigerationUnitDialog = ({ onUnitAdded }: AddRefrigerationUnitDialogP
   const [location, setLocation] = useState("");
   const [targetTemperature, setTargetTemperature] = useState("");
   const [notes, setNotes] = useState("");
-  const { toast } = useToast();
+  
+  const createUnit = useCreateRefrigerationUnit();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fridgeNumber || !location || !targetTemperature) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Save to localStorage for now
-    const units = JSON.parse(localStorage.getItem("refrigerationUnits") || "[]");
-    const newUnit = {
-      id: Date.now().toString(),
+    await createUnit.mutateAsync({
       fridgeNumber,
       type,
       location,
-      targetTemperature: parseFloat(targetTemperature),
+      targetTemperature,
       notes,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-    
-    units.push(newUnit);
-    localStorage.setItem("refrigerationUnits", JSON.stringify(units));
-
-    toast({
-      title: "Unit Added",
-      description: `${type} ${fridgeNumber} has been added successfully`,
     });
 
     setOpen(false);
@@ -139,8 +118,8 @@ const AddRefrigerationUnitDialog = ({ onUnitAdded }: AddRefrigerationUnitDialogP
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90">
-              Add Unit
+            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90" disabled={createUnit.isPending}>
+              {createUnit.isPending ? "Adding..." : "Add Unit"}
             </Button>
           </div>
         </form>

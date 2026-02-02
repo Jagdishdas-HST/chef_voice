@@ -4,52 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateCookRecord } from "@/hooks/useCookRecords";
 
 const AddCookRecordDialog = ({ onRecordAdded }: { onRecordAdded: () => void }) => {
   const [open, setOpen] = useState(false);
   const [productName, setProductName] = useState("");
   const [staffName, setStaffName] = useState("");
   const [temperature, setTemperature] = useState("");
-  const { toast } = useToast();
+  
+  const createRecord = useCreateCookRecord();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!productName || !staffName || !temperature) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    const tempValue = parseFloat(temperature);
-    if (tempValue < 75) {
-      toast({
-        title: "Temperature Too Low",
-        description: "Cooking temperature must be ≥75°C",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const records = JSON.parse(localStorage.getItem("cookRecords") || "[]");
-    const newRecord = {
-      id: Date.now().toString(),
+    await createRecord.mutateAsync({
       productName,
       staffName,
-      temperature: tempValue,
-      cookedAt: new Date().toISOString(),
-    };
-    
-    records.push(newRecord);
-    localStorage.setItem("cookRecords", JSON.stringify(records));
-
-    toast({
-      title: "Cook Record Added",
-      description: `${productName} cooked at ${tempValue}°C`,
+      temperature,
     });
 
     setOpen(false);
@@ -112,8 +83,8 @@ const AddCookRecordDialog = ({ onRecordAdded }: { onRecordAdded: () => void }) =
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90">
-              Save Record
+            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90" disabled={createRecord.isPending}>
+              {createRecord.isPending ? "Saving..." : "Save Record"}
             </Button>
           </div>
         </form>

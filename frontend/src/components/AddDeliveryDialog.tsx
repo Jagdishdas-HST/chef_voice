@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateDelivery } from "@/hooks/useDeliveries";
 
 interface Product {
   name: string;
@@ -24,7 +24,8 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
   const [products, setProducts] = useState<Product[]>([
     { name: "", quantity: "", temperature: "", category: "Chilled", batchNumber: "", quality: "Good" }
   ]);
-  const { toast } = useToast();
+  
+  const createDelivery = useCreateDelivery();
 
   const addProduct = () => {
     setProducts([...products, { name: "", quantity: "", temperature: "", category: "Chilled", batchNumber: "", quality: "Good" }]);
@@ -40,44 +41,14 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
     setProducts(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!staffMember || !supplier) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please fill in staff member and supplier",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    const invalidProducts = products.filter(p => !p.name || !p.batchNumber || (p.category !== "Ambient" && !p.temperature));
-    if (invalidProducts.length > 0) {
-      toast({
-        title: "Incomplete Products",
-        description: "All products need name, batch number, and temperature (except Ambient)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const deliveries = JSON.parse(localStorage.getItem("deliveries") || "[]");
-    const newDelivery = {
-      id: Date.now().toString(),
+    await createDelivery.mutateAsync({
       staffMember,
       supplier,
       deliveryDate,
       products,
-      createdAt: new Date().toISOString(),
-    };
-    
-    deliveries.push(newDelivery);
-    localStorage.setItem("deliveries", JSON.stringify(deliveries));
-
-    toast({
-      title: "Delivery Logged",
-      description: `Delivery from ${supplier} has been recorded`,
     });
 
     setOpen(false);
@@ -228,8 +199,8 @@ const AddDeliveryDialog = ({ onDeliveryAdded }: { onDeliveryAdded: () => void })
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90">
-              Save Delivery
+            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90" disabled={createDelivery.isPending}>
+              {createDelivery.isPending ? "Saving..." : "Save Delivery"}
             </Button>
           </div>
         </form>

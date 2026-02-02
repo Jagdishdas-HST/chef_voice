@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateHotHoldingRecord } from "@/hooks/useHotHolding";
 
 const AddHotHoldingDialog = ({ onRecordAdded }: { onRecordAdded: () => void }) => {
   const [open, setOpen] = useState(false);
@@ -14,47 +14,18 @@ const AddHotHoldingDialog = ({ onRecordAdded }: { onRecordAdded: () => void }) =
   const [coreTemperature, setCoreTemperature] = useState("");
   const [checkedBy, setCheckedBy] = useState("");
   const [comments, setComments] = useState("");
-  const { toast } = useToast();
+  
+  const createRecord = useCreateHotHoldingRecord();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!foodItem || !timeIntoHotHold || !coreTemperature || !checkedBy) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    const tempValue = parseFloat(coreTemperature);
-    if (tempValue < 63) {
-      toast({
-        title: "Temperature Too Low",
-        description: "Hot holding temperature must be ≥63°C",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const records = JSON.parse(localStorage.getItem("hotHoldingRecords") || "[]");
-    const newRecord = {
-      id: Date.now().toString(),
+    await createRecord.mutateAsync({
       foodItem,
       timeIntoHotHold,
-      coreTemperature: tempValue,
+      coreTemperature,
       checkedBy,
       comments,
-      createdAt: new Date().toISOString(),
-    };
-    
-    records.push(newRecord);
-    localStorage.setItem("hotHoldingRecords", JSON.stringify(records));
-
-    toast({
-      title: "Hot Holding Logged",
-      description: `${foodItem} at ${tempValue}°C`,
     });
 
     setOpen(false);
@@ -140,8 +111,8 @@ const AddHotHoldingDialog = ({ onRecordAdded }: { onRecordAdded: () => void }) =
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90">
-              Save Check
+            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90" disabled={createRecord.isPending}>
+              {createRecord.isPending ? "Saving..." : "Save Check"}
             </Button>
           </div>
         </form>

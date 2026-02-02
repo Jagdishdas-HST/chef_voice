@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Thermometer } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateTemperatureLog } from "@/hooks/useRefrigeration";
 
 interface LogTemperatureDialogProps {
   unit: {
@@ -21,7 +21,8 @@ const LogTemperatureDialog = ({ unit, onLogAdded }: LogTemperatureDialogProps) =
   const [open, setOpen] = useState(false);
   const [temperature, setTemperature] = useState("");
   const [notes, setNotes] = useState("");
-  const { toast } = useToast();
+  
+  const createLog = useCreateTemperatureLog();
 
   const getStatus = (temp: number, target: number, type: string) => {
     if (type === "Freezer") {
@@ -36,47 +37,17 @@ const LogTemperatureDialog = ({ unit, onLogAdded }: LogTemperatureDialogProps) =
     return "ok";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!temperature) {
-      toast({
-        title: "Missing Temperature",
-        description: "Please enter a temperature reading",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const tempValue = parseFloat(temperature);
     const status = getStatus(tempValue, unit.targetTemperature, unit.type);
 
-    const logs = JSON.parse(localStorage.getItem("temperatureLogs") || "[]");
-    const newLog = {
-      id: Date.now().toString(),
+    await createLog.mutateAsync({
       unitId: unit.id,
-      fridgeNumber: unit.fridgeNumber,
-      type: unit.type,
-      temperature: tempValue,
-      targetTemperature: unit.targetTemperature,
+      temperature,
       status,
       notes,
-      readingTime: new Date().toISOString(),
-    };
-    
-    logs.push(newLog);
-    localStorage.setItem("temperatureLogs", JSON.stringify(logs));
-
-    const statusMessages = {
-      ok: "Temperature is within safe range",
-      warning: "Temperature is approaching unsafe levels",
-      critical: "CRITICAL: Temperature is outside safe range!",
-    };
-
-    toast({
-      title: status === "ok" ? "Temperature Logged" : status === "warning" ? "Warning" : "Critical Alert",
-      description: statusMessages[status],
-      variant: status === "critical" ? "destructive" : "default",
     });
 
     setOpen(false);
@@ -129,8 +100,8 @@ const LogTemperatureDialog = ({ unit, onLogAdded }: LogTemperatureDialogProps) =
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90">
-              Log Temperature
+            <Button type="submit" className="bg-voice-purple hover:bg-voice-purple/90" disabled={createLog.isPending}>
+              {createLog.isPending ? "Logging..." : "Log Temperature"}
             </Button>
           </div>
         </form>

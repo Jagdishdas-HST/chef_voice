@@ -1,40 +1,13 @@
-import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Truck, Camera, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AddDeliveryDialog from "@/components/AddDeliveryDialog";
-
-interface Delivery {
-  id: string;
-  staffMember: string;
-  supplier: string;
-  deliveryDate: string;
-  products: Array<{
-    name: string;
-    quantity: string;
-    temperature: string;
-    category: string;
-    batchNumber: string;
-    quality: string;
-  }>;
-  createdAt: string;
-}
+import { useDeliveries } from "@/hooks/useDeliveries";
 
 const Delivery = () => {
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-
-  const loadData = () => {
-    const stored = JSON.parse(localStorage.getItem("deliveries") || "[]");
-    setDeliveries(stored.sort((a: Delivery, b: Delivery) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: deliveries = [], refetch } = useDeliveries();
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -62,7 +35,7 @@ const Delivery = () => {
               <Mic className="h-4 w-4 mr-2" />
               Voice Log
             </Button>
-            <AddDeliveryDialog onDeliveryAdded={loadData} />
+            <AddDeliveryDialog onDeliveryAdded={refetch} />
           </div>
         </div>
 
@@ -82,7 +55,7 @@ const Delivery = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {deliveries.map((delivery) => (
+            {deliveries.map((delivery: any) => (
               <Card key={delivery.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -97,7 +70,7 @@ const Delivery = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {delivery.products.map((product, idx) => (
+                    {delivery.products.map((product: any, idx: number) => (
                       <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                         <div className="flex-1">
                           <div className="font-medium">{product.name}</div>

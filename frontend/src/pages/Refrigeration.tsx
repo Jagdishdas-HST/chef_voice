@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,47 +5,16 @@ import { Thermometer, MapPin, Trash2 } from "lucide-react";
 import AddRefrigerationUnitDialog from "@/components/AddRefrigerationUnitDialog";
 import LogTemperatureDialog from "@/components/LogTemperatureDialog";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-
-interface RefrigerationUnit {
-  id: string;
-  fridgeNumber: string;
-  type: string;
-  location: string;
-  targetTemperature: number;
-  notes?: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
-interface TemperatureLog {
-  id: string;
-  unitId: string;
-  temperature: number;
-  status: "ok" | "warning" | "critical";
-  notes?: string;
-  readingTime: string;
-}
+import { useRefrigerationUnits, useTemperatureLogs, useDeleteRefrigerationUnit } from "@/hooks/useRefrigeration";
 
 const Refrigeration = () => {
-  const [units, setUnits] = useState<RefrigerationUnit[]>([]);
-  const [logs, setLogs] = useState<TemperatureLog[]>([]);
-  const { toast } = useToast();
-
-  const loadData = () => {
-    const storedUnits = JSON.parse(localStorage.getItem("refrigerationUnits") || "[]");
-    const storedLogs = JSON.parse(localStorage.getItem("temperatureLogs") || "[]");
-    setUnits(storedUnits.filter((u: RefrigerationUnit) => u.isActive));
-    setLogs(storedLogs);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: units = [], refetch: refetchUnits } = useRefrigerationUnits();
+  const { data: logs = [], refetch: refetchLogs } = useTemperatureLogs();
+  const deleteUnit = useDeleteRefrigerationUnit();
 
   const getLatestLog = (unitId: string) => {
-    const unitLogs = logs.filter(log => log.unitId === unitId);
-    return unitLogs.sort((a, b) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime())[0];
+    const unitLogs = logs.filter((log: any) => log.unitId === unitId);
+    return unitLogs.sort((a: any, b: any) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime())[0];
   };
 
   const getStatusColor = (status: string) => {
@@ -58,16 +26,17 @@ const Refrigeration = () => {
     }
   };
 
-  const deleteUnit = (unitId: string) => {
-    const updatedUnits = units.map(u => 
-      u.id === unitId ? { ...u, isActive: false } : u
-    );
-    localStorage.setItem("refrigerationUnits", JSON.stringify(updatedUnits));
-    setUnits(updatedUnits.filter(u => u.isActive));
-    toast({
-      title: "Unit Removed",
-      description: "Refrigeration unit has been removed",
-    });
+  const handleDelete = async (unitId: string) => {
+    await deleteUnit.mutateAsync(unitId);
+    refetchUnits();
+  };
+
+  const handleUnitAdded = () => {
+    refetchUnits();
+  };
+
+  const handleLogAdded = () => {
+    refetchLogs();
   };
 
   return (
@@ -78,7 +47,7 @@ const Refrigeration = () => {
             <h1 className="text-3xl font-bold mb-2">Refrigeration Monitoring</h1>
             <p className="text-gray-600">Track fridge and freezer temperatures (FSAI SC2)</p>
           </div>
-          <AddRefrigerationUnitDialog onUnitAdded={loadData} />
+          <AddRefrigerationUnitDialog onUnitAdded={handleUnitAdded} />
         </div>
 
         {units.length === 0 ? (
@@ -97,7 +66,7 @@ const Refrigeration = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {units.map((unit) => {
+            {units.map((unit: any) => {
               const latestLog = getLatestLog(unit.id);
               return (
                 <Card key={unit.id}>
@@ -113,7 +82,7 @@ const Refrigeration = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => deleteUnit(unit.id)}
+                        onClick={() => handleDelete(unit.id)}
                       >
                         <Trash2 className="h-4 w-4 text-gray-400" />
                       </Button>
@@ -147,7 +116,7 @@ const Refrigeration = () => {
                       <div className="text-sm text-gray-500 italic">No readings yet</div>
                     )}
 
-                    <LogTemperatureDialog unit={unit} onLogAdded={loadData} />
+                    <LogTemperatureDialog unit={unit} onLogAdded={handleLogAdded} />
                   </CardContent>
                 </Card>
               );
@@ -164,10 +133,10 @@ const Refrigeration = () => {
             <CardContent>
               <div className="space-y-2">
                 {logs
-                  .sort((a, b) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime())
+                  .sort((a: any, b: any) => new Date(b.readingTime).getTime() - new Date(a.readingTime).getTime())
                   .slice(0, 10)
-                  .map((log) => {
-                    const unit = units.find(u => u.id === log.unitId);
+                  .map((log: any) => {
+                    const unit = units.find((u: any) => u.id === log.unitId);
                     return (
                       <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                         <div>

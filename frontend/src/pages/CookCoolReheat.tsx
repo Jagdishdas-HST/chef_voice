@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,28 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Flame, Plus } from "lucide-react";
 import AddCookRecordDialog from "@/components/AddCookRecordDialog";
-
-interface CookRecord {
-  id: string;
-  productName: string;
-  staffName: string;
-  temperature: number;
-  cookedAt: string;
-}
+import { useCookRecords } from "@/hooks/useCookRecords";
 
 const CookCoolReheat = () => {
-  const [cookRecords, setCookRecords] = useState<CookRecord[]>([]);
-
-  const loadData = () => {
-    const stored = JSON.parse(localStorage.getItem("cookRecords") || "[]");
-    setCookRecords(stored.sort((a: CookRecord, b: CookRecord) => 
-      new Date(b.cookedAt).getTime() - new Date(a.cookedAt).getTime()
-    ));
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { data: cookRecords = [], refetch } = useCookRecords();
 
   return (
     <DashboardLayout>
@@ -54,7 +35,7 @@ const CookCoolReheat = () => {
                     <CardTitle>Cooking Records</CardTitle>
                     <CardDescription>Temperature must be ≥75°C</CardDescription>
                   </div>
-                  <AddCookRecordDialog onRecordAdded={loadData} />
+                  <AddCookRecordDialog onRecordAdded={refetch} />
                 </div>
               </CardHeader>
               <CardContent>
@@ -65,7 +46,7 @@ const CookCoolReheat = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {cookRecords.map((record) => (
+                    {cookRecords.map((record: any) => (
                       <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                         <div>
                           <div className="font-medium">{record.productName}</div>
@@ -75,8 +56,8 @@ const CookCoolReheat = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-lg">{record.temperature}°C</span>
-                          <Badge className={record.temperature >= 75 ? "bg-success-green" : "bg-danger-red"}>
-                            {record.temperature >= 75 ? "SAFE" : "UNSAFE"}
+                          <Badge className={parseFloat(record.temperature) >= 75 ? "bg-success-green" : "bg-danger-red"}>
+                            {parseFloat(record.temperature) >= 75 ? "SAFE" : "UNSAFE"}
                           </Badge>
                         </div>
                       </div>
