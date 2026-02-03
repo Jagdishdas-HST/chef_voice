@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  voiceService, 
   parseVoiceCommand,
   parseDeliveryVoiceInput,
   parseTemperatureVoiceInput,
@@ -9,6 +8,7 @@ import {
   parseHotHoldingVoiceInput,
   type VoiceAction
 } from '@/services/voice.service';
+import { whisperRecorder, transcribeAudio } from '@/services/whisper.service';
 import { useToast } from '@/hooks/use-toast';
 
 export function useVoiceControl() {
@@ -39,7 +39,6 @@ export function useVoiceControl() {
           title: 'Opening form',
           description: `Creating new ${action.target}`,
         });
-        // Trigger dialog open event
         window.dispatchEvent(new CustomEvent('voice-add', { detail: action.target }));
         break;
 
@@ -67,67 +66,6 @@ export function useVoiceControl() {
         console.log('[Voice Control] Unknown action type:', action.type);
     }
   }, [navigate, toast]);
-
-  useEffect(() => {
-    if (!voiceService.isSupported()) {
-      console.log('[Voice Control] Not supported in this browser');
-      return;
-    }
-
-    return () => {
-      voiceService.stopListening();
-    };
-  }, []);
-
-  const startListening = useCallback(() => {
-    if (!voiceService.isSupported()) {
-      toast({
-        title: 'Voice control not supported',
-        description: 'Please use Chrome, Edge, or Safari',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    voiceService.startListening(
-      (result) => {
-        console.log('[Voice Control] Result:', result);
-        setTranscript(result.transcript);
-
-        if (result.isFinal) {
-          const action = parseVoiceCommand(result.transcript);
-          if (action) {
-            handleVoiceCommand(action);
-            
-            // Auto-stop after successful command
-            setTimeout(() => {
-              voiceService.stopListening();
-              setIsListening(false);
-              setTranscript('');
-            }, 1000);
-          } else {
-            // Try context-specific parsing based on current page
-            handleContextSpecificCommand(result.transcript);
-          }
-        }
-      },
-      (error) => {
-        console.error('[Voice Control] Error:', error);
-        toast({
-          title: 'Voice recognition error',
-          description: error,
-          variant: 'destructive',
-        });
-        setIsListening(false);
-      }
-    );
-
-    setIsListening(true);
-    toast({
-      title: 'Listening...',
-      description: 'Say a command to control the app',
-    });
-  }, [handleVoiceCommand, toast]);
 
   const handleContextSpecificCommand = useCallback((transcript: string) => {
     const currentPath = location.pathname;
@@ -171,11 +109,64 @@ export function useVoiceControl() {
     }
   }, [location.pathname, toast]);
 
-  const stopListening = useCallback(() => {
-    voiceService.stopListening();
-    setIsListening(false);
-    setTranscript('');
-  }, []);
+  const startListening = useCallback(async () => {
+    try {
+      await whisperRecorder.startRecording();
+      setIsListening(true);
+      toast({
+        title: 'Recording...',
+        description: 'Speak your command clearly',
+      });
+    } catch (error) {
+      console.error('[Voice Control] Failed to start recording:', error);
+      toast({
+        title: 'Microphone access denied',
+        description: 'Please allow microphone access',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
+
+  const stopListening = useCallback(async () => {
+    if (!whisperRecorder.isRecording()) {
+      return;
+    }
+
+    try {
+      toast({
+        title: 'Processing...',
+        description: 'Transcribing your voice command',
+      });
+
+      const audioBlob = await whisperRecorder.stopRecording();
+      setIsListening(false);
+
+      const result = await transcribeAudio(audioBlob);
+      const transcribedText = result.text;
+      
+      console.log('[Voice Control] Transcription:', transcribedText);
+      setTranscript(transcribedText);
+
+      // Parse and execute command
+      const action = parseVoiceCommand(transcribedText);
+      if (action) {
+        handleVoiceCommand(action);
+      } else {
+        handleContextSpecificCommand(transcribedText);
+      }
+
+      // Clear transcript after 3 seconds
+      setTimeout(() => setTranscript(''), 3000);
+    } catch (error) {
+      console.error('[Voice Control] Error:', error);
+      toast({
+        title: 'Voice recognition failed',
+        description: String(error),
+        variant: 'destructive',
+      });
+      setIsListening(false);
+    }
+  }, [handleVoiceCommand, handleContextSpecificCommand, toast]);
 
   return {
     isListening,
@@ -183,6 +174,6 @@ export function useVoiceControl() {
     lastCommand,
     startListening,
     stopListening,
-    isSupported: voiceService.isSupported(),
+    isSupported: true, // Whisper is always supported
   };
 }

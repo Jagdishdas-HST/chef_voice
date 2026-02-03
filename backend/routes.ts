@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
+import multer from "multer";
 
 import { 
   loginSchema, 
@@ -14,6 +15,7 @@ import {
 import { storage } from "./storage";
 import { requireAuth, attachUser } from "./middleware/auth";
 import uploadRoutes from "./upload.route";
+import { whisperService } from "./whisper.service";
 
 // Extend session data
 declare module "express-session" {
@@ -22,12 +24,52 @@ declare module "express-session" {
   }
 }
 
+// Configure multer for audio uploads
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25MB max (Whisper limit)
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("audio/") || file.mimetype === "video/webm") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only audio files are allowed"));
+    }
+  },
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Attach user to all requests
   app.use(attachUser);
 
   // Upload routes
   app.use("/api/upload", uploadRoutes);
+
+  // ============ WHISPER TRANSCRIPTION ROUTE ============
+  
+  app.post("/api/transcribe", requireAuth, audioUpload.single("audio"), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No audio file provided" });
+      }
+
+      console.log("[Transcribe] Processing audio file:", req.file.originalname);
+      
+      const transcription = await whisperService.transcribe(
+        req.file.buffer,
+        req.file.originalname
+      );
+
+      res.json(transcription);
+    } catch (error) {
+      console.error("[Transcribe] Error:", error);
+      res.status(500).json({ 
+        message: "Failed to transcribe audio",
+        error: String(error)
+      });
+    }
+  });
 
   // ============ AUTHENTICATION ROUTES ============
 

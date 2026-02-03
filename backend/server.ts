@@ -13,65 +13,70 @@ const PgSession = connectPgSimple(session);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
-app.use(
-  session({
-    store: new PgSession({
-      pool,
-      tableName: "sessions",
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET || "DUMMY_SESSION_SECRET_CHANGE_IN_PRODUCTION",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    },
-  })
-);
-
-// Logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const start = Date.now();
-  let capturedJson: any;
-  const originalJson = res.json;
-
-  res.json = function (body, ...args) {
-    capturedJson = body;
-    return originalJson.call(this, body, ...args);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (req.path.startsWith("/api")) {
-      let logLine = `${req.method} ${req.path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJson) {
-        logLine += ` :: ${JSON.stringify(capturedJson)}`;
-      }
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
-// Health check endpoint
-app.get("/api/health", (req: Request, res: Response) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
-    uptime: process.uptime(),
-    version: process.env.npm_package_version || "1.0.0",
-  });
-});
-
 // Start the server
 async function startServer() {
   try {
+    // Test database connection first
+    console.log("Testing database connection...");
+    await pool.query("SELECT NOW()");
+    console.log("✅ Database connected successfully");
+
+    // Session configuration - only after DB is confirmed working
+    app.use(
+      session({
+        store: new PgSession({
+          pool,
+          tableName: "sessions",
+          createTableIfMissing: true,
+        }),
+        secret: process.env.SESSION_SECRET || "DUMMY_SESSION_SECRET_CHANGE_IN_PRODUCTION",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+        },
+      })
+    );
+
+    // Logging middleware
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      const start = Date.now();
+      let capturedJson: any;
+      const originalJson = res.json;
+
+      res.json = function (body, ...args) {
+        capturedJson = body;
+        return originalJson.call(this, body, ...args);
+      };
+
+      res.on("finish", () => {
+        const duration = Date.now() - start;
+        if (req.path.startsWith("/api")) {
+          let logLine = `${req.method} ${req.path} ${res.statusCode} in ${duration}ms`;
+          if (capturedJson) {
+            logLine += ` :: ${JSON.stringify(capturedJson)}`;
+          }
+          log(logLine);
+        }
+      });
+
+      next();
+    });
+
+    // Health check endpoint
+    app.get("/api/health", (req: Request, res: Response) => {
+      res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || "development",
+        uptime: process.uptime(),
+        version: process.env.npm_package_version || "1.0.0",
+      });
+    });
+
     // Register API routes FIRST
     const server = await registerRoutes(app);
 
